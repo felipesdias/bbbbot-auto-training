@@ -190,12 +190,98 @@ const clearOrCreteFolder = async (folderPath) => {
         if ((await fs.lstat(`${folderPath}/${file}`)).isDirectory()) {
             const subFiles = await fs.readdir(`${folderPath}/${file}`);
             for (const subFile of subFiles) {
-                fs.unlink(`${folderPath}/${file}/${subFile}`);
+                await fs.unlink(`${folderPath}/${file}/${subFile}`);
             }
         } else {
-            fs.unlink(`${folderPath}/${file}`);
+            await fs.unlink(`${folderPath}/${file}`);
         }
     }, { retry: 2, sleepOnRetry: 10, sizeLimit: 1000 });
+}
+
+const getPositionVote = (captcha, model) => {
+    const symbol = captcha.data.symbol;
+    console.log(symbol)
+
+    const canvas = createCanvas(265, 53);
+    const ctx = canvas.getContext('2d');
+
+    const img = new Image;
+    img.src = Buffer.from(captcha.data.image, 'base64');
+    ctx.drawImage(img, 0, 0);
+    
+    const imgSrc = ctx.getImageData(0, 0, img.width, img.height);
+    const boxes = getBoxesImages(imgSrc);
+    const blackLines = boxes.map(({ j1, j2 }) => getBlackLines(imgSrc, j1, j2));
+    boxes.forEach(({ j1, j2 }, idx) => blackLines[idx].forEach(i => removeBlackLines(imgSrc, i, j1, j2)));
+    ctx.putImageData(imgSrc, 0, 0);
+
+    const imgs = boxes.map(({ j1, j2 }) => getBoundingBox(imgSrc, j1, j2))
+                        .map(boundingBox => cutImgCanvas(canvas, boundingBox))
+                        .map(img => {
+                            const image = new Image;
+                            image.src = Buffer.from(img.replace(/^data:image\/png;base64,/, ""), 'base64');
+                            ctx.drawImage(image, 0, 0);
+                            const imageSrc = ctx.getImageData(0, 0, image.width, image.height);
+                            return getMetaInfo(imageSrc);
+                        });
+
+       
+    let imgVoteIndex = -1;
+
+    if (model[symbol]) {
+        const scores = imgs.map(info1 => model[symbol].reduce((max, info2) => Math.max(max, scoreCompareMetainfo(info1, info2)), 0));
+        console.log(imgs, scores)
+        imgVoteIndex = scores.map((score, index) => ({ score, index })).sort((a, b) => b.score - a.score)[0].index;
+    }
+
+    return imgVoteIndex === -1
+                ? null
+                : { clientX: (imgVoteIndex * (265 / 5)) + (265/10), clientY: 25 }
+}
+
+const testeModel = async (numVotes, modelPath) => {
+    const canvas = createCanvas(265, 53);
+    const ctx = canvas.getContext('2d');
+
+
+    clearOrCreteFolder('temp');
+    const metainfoTxt = await fs.readFile(modelPath);
+    const model = JSON.parse(metainfoTxt);
+
+    while(numVotes--) {
+        const resp = await getCaptcha();
+
+        const symbol = resp.data.data.symbol;
+
+        await fs.writeFile('temp/'+String(numVotes)+'_'+symbol+'.png', resp.data.data.image.replace(/^data:image\/png;base64,/, ""), 'base64');
+
+        const img = new Image;
+        img.src = Buffer.from(resp.data.data.image, 'base64');
+        ctx.drawImage(img, 0, 0);
+        
+        const imgSrc = ctx.getImageData(0, 0, img.width, img.height);
+        const boxes = getBoxesImages(imgSrc);
+        const blackLines = boxes.map(({ j1, j2 }) => getBlackLines(imgSrc, j1, j2));
+        boxes.forEach(({ j1, j2 }, idx) => blackLines[idx].forEach(i => removeBlackLines(imgSrc, i, j1, j2)));
+        ctx.putImageData(imgSrc, 0, 0);
+
+        const imgs = boxes.map(({ j1, j2 }) => getBoundingBox(imgSrc, j1, j2))
+                            .map(boundingBox => cutImgCanvas(canvas, boundingBox))
+                            .map(img => {
+                                const image = new Image;
+                                image.src = Buffer.from(img.replace(/^data:image\/png;base64,/, ""), 'base64');
+                                ctx.drawImage(image, 0, 0);
+                                const imageSrc = ctx.getImageData(0, 0, image.width, image.height);
+                                return getMetaInfo(imageSrc);
+                            });
+
+        if (model[symbol]) {
+            const scores = imgs.map(info1 => model[symbol].reduce((max, info2) => Math.max(max, scoreCompareMetainfo(info1, info2)), 0));
+            console.log(scores, scores.map((score, index) => ({ score, index })).sort((a, b) => b.score - a.score)[0].index, symbol);
+        } else {
+            console.log(symbol, 'sem modelo definido');
+        }
+    }
 }
 
 module.exports = {
@@ -210,5 +296,7 @@ module.exports = {
     cutImgCanvas,
     getGreyScaleArray,
     getMetaInfo,
-    scoreCompareMetainfo
+    scoreCompareMetainfo,
+    testeModel,
+    getPositionVote
 }

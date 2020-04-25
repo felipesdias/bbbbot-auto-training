@@ -54,5 +54,3 @@ module.exports = {
     generateAllMetaInfos,
     generateMetainfosFolder
 }
-
-generateAllMetaInfos('cropCleanedCaptchas')

@@ -4,7 +4,6 @@ const fastBatchPromisse = require('bulk-async');
 
 const downloadImages = async (numberOfCaptchas, destFolder) => {
     createFolder(destFolder);
-
     const firstId = ((await fs.readdir(destFolder)).map(file => parseInt(file.split('~')[0])).sort((a, b) => b - a)[0] || 0) + 1;
 
     const ids = Array(numberOfCaptchas - firstId + 1).fill(0).map((_, i) => i + firstId);

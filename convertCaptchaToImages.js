@@ -6,7 +6,7 @@ const fs = require('fs').promises;
 const canvas = createCanvas(265, 53);
 const ctx = canvas.getContext('2d');
 
-const convertCaptcha = async (src, file, dest) => {
+const convertCaptcha = async (src, file, dest, saveFile = true) => {
     const [captchaId, symbol] = file.replace('.png', '').split('~');
 
     const image = await nodeLoadImage(`${src}/${file}`);
@@ -21,7 +21,7 @@ const convertCaptcha = async (src, file, dest) => {
     const imgs = boxes.map(({ j1, j2 }) => getBoundingBox(imgSrc, j1, j2)).map(boundingBox => cutImgCanvas(canvas, boundingBox));
 
     createFolder(`${dest}/${symbol}`);
-
+    
     await Promise.all(
         imgs.map((base64, idx) => fs.writeFile(`${dest}/${symbol}/${captchaId}~${idx}.png`, base64.replace(/^data:image\/png;base64,/, ""), 'base64'))
     );
