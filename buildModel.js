@@ -43,7 +43,6 @@ const generateModel = async (src, dest) => {
     });
     console.timeEnd('Total');
     
-    console.log(model);
     await fs.writeFile(dest + '/model.js', JSON.stringify(model));
 }
 

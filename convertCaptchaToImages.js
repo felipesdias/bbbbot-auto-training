@@ -43,7 +43,7 @@ const convertFolderCaptcha = async (src, dest) => {
     await fastBatchPromisse.forEach(files, async (file) => {
         await convertCaptcha(src, file, dest);
         cont++;
-    }, { onError: ({ error, args }) => console.log(args, error), ignoreExceptions: true, sizeLimit: 200 });
+    }, { onError: ({ error, args }) => console.log(args, error), ignoreExceptions: true, sizeLimit: 1000 });
 
     clearInterval(idInterval);
 

@@ -37,26 +37,39 @@ const identifyFolder = async (folderPath) => {
     }
 
     const finalResult = [];
+    const trueImages = {};
     const bannedImage = {};
 
     groups = groups.sort((a, b) => b.cont - a.cont);
 
+    console.log(groups.length);
+
     groups.forEach(g => {
-        if (!bannedImage[g.infos.name]) {
-            metaInfoByCaptchaId[g.infos.captchaId].forEach(x => {
-                bannedImage[x.name] = true;
+        if (!bannedImage[g.infos.name] || trueImages[g.infos.name]) {
+            g.isSame.forEach(isSame => {
+                trueImages[isSame.name] = true;
+                if (!isSame.refer) 
+                    isSame.refer = g.infos.name;
+                metaInfoByCaptchaId[isSame.captchaId].filter(x => x.name !== isSame.name).forEach(x => {
+                    bannedImage[x.name] = true;
+                });
             });
-            if (finalResult.every(x => scoreCompareMetainfo(g.infos, x.infos) < 0.99))
-                finalResult.push(g);
+
+            // if (finalResult.every(x => scoreCompareMetainfo(g.infos, x.infos) < 0.99))
+            finalResult.push(g);
         }
     });
+
+    if (folderPath.indexOf('agulha') !== -1) {
+        // console.log(finalResult);
+    }
 
     
 
     await fastBatchPromisse.forEach(finalResult, async (r) => {
-        await fs.copyFile(`${folderPath}/${r.infos.name}`, `${folderPath}/filtered/${r.cont}~${r.infos.name}`)
+        await fs.copyFile(`${folderPath}/${r.infos.name}`, `${folderPath}/filtered/${r.infos.refer}~${r.cont}~${r.infos.name}`)
     }, {
-        retry: 2, sleepOnRetry: 10, sizeLimit: 100, onError: ({ error, args }) => {
+        retry: 2, sleepOnRetry: 10, sizeLimit: 1000, onError: ({ error, args }) => {
             console.log(args, error);
         }
     });
@@ -65,7 +78,7 @@ const identifyFolder = async (folderPath) => {
 }
 
 const identifyAllFolders = async (src) => {
-    let folders = await fs.readdir(src);
+    let folders = (await fs.readdir(src));
 
     // folders = folders.slice(0, 1);
 

@@ -7,9 +7,9 @@ const utils = require('./utils');
 
 (async () => {
     // await downloadCaptchas.downloadImages(25000, 'captchas');
-    await convertCaptchaToImages.convertFolderCaptcha('captchas', 'captchasCrop');
+    // await convertCaptchaToImages.convertFolderCaptcha('captchas', 'captchasCrop');
     await buildMetainfosImages.generateAllMetaInfos('captchasCrop');
     await identifyImages.identifyAllFolders('captchasCrop');
-    await buildModel.generateModel('captchasCrop', './');
+    // await buildModel.generateModel('captchasCrop', './');
     // await utils.testeModel(1, 'model.js');
 })();

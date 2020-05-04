@@ -3,7 +3,8 @@ const fs = require('fs').promises;
 const fastBatchPromisse = require('bulk-async');
 const axios = require('axios');
 const Image = require('canvas/lib/image');
-const { createCanvas } = require('canvas')
+const { createCanvas } = require('canvas');
+const fsExtra = require('fs-extra');
 
 const getCaptcha = async () => {
     return await axios.post('https://captcha.globo.com/api/challenge/generate?appId=M2QxYzU4NTEtOGZiMS00NTU5LTliNTMtNjMyOTI0ZTA0NDY4Cg&runtime=1.1.5', {}, {
@@ -15,10 +16,10 @@ const getCaptcha = async () => {
 }
 
 const scoreCompareMetainfo = (info1, info2) => {
-    // if (Math.abs(info1.width - info2.width) > 5 || Math.abs(info1.height - info2.height) > 5)
+    // if (info1.width !== info2.width || info1.height !== info2.height)
     //     return 0;
-    // if (info1.captchaId !== undefined && info2.captchaId !== undefined && info1.captchaId === info2.captchaId)
-    //     return 0;
+    if (info1.captchaId !== undefined && info2.captchaId !== undefined && info1.captchaId === info2.captchaId)
+        return 0;
 
     const keys = Object.keys(info1).filter(x => x.startsWith("_"));
     if (!keys.every(key => key in info2)) {
@@ -28,9 +29,13 @@ const scoreCompareMetainfo = (info1, info2) => {
         throw "Different Metainfos";
     }
 
-    const diff = keys.reduce((result, key) => result + Math.abs(info1[key] - info2[key]), 0);
+    const diff = keys.reduce((result, key) => result + Math.abs(info1[key]/(info1.width * info1.height) - info2[key]/(info2.width * info2.height)), 0);
+    // console.log(1 - diff);
+    return 1 - diff;
+
+    // const diff = keys.reduce((result, key) => result + Math.abs(info1[key] - info2[key]), 0);
     
-    return 1 - ((diff / (info1.width * info1.height)) + (diff / (info2.width * info2.height))) / 2;
+    // return 1 - ((diff / (info1.width * info1.height)) + (diff / (info2.width * info2.height))) / 2;
 }
 
 const nodeLoadImage = (src) => {
@@ -65,7 +70,7 @@ const getGreyScaleArray = (img) => {
     return array;
 }
 
-const getMetaInfo = (img, granularity = 5) => {
+const getMetaInfo = (img, granularity = 51) => {
     const info = {
         width: img.width,
         height: (img.data.length / 4) / img.width
@@ -184,18 +189,7 @@ const createFolder = (folderPath) => {
 const clearOrCreteFolder = async (folderPath) => {
     createFolder(folderPath);
 
-    const files = await fs.readdir(folderPath);
-
-    await fastBatchPromisse.forEach(files, async (file) => {
-        if ((await fs.lstat(`${folderPath}/${file}`)).isDirectory()) {
-            const subFiles = await fs.readdir(`${folderPath}/${file}`);
-            for (const subFile of subFiles) {
-                await fs.unlink(`${folderPath}/${file}/${subFile}`);
-            }
-        } else {
-            await fs.unlink(`${folderPath}/${file}`);
-        }
-    }, { retry: 2, sleepOnRetry: 10, sizeLimit: 1000 });
+    await fsExtra.emptyDir(folderPath);
 }
 
 const getPositionVote = (captcha, model) => {

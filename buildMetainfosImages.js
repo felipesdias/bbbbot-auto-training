@@ -29,7 +29,7 @@ const generateMetainfosFolder = async (folderPath) => {
     }, {
         retry: 1,
         sleepOnRetry: 100,
-        sizeLimit: 500,
+        sizeLimit: 1000,
         onError: ({ error, args }) => {
             console.log(args, error);
         }
@@ -39,7 +39,7 @@ const generateMetainfosFolder = async (folderPath) => {
 }
 
 const generateAllMetaInfos = async (src) => {
-    let folders = await fs.readdir(src);
+    let folders = (await fs.readdir(src));
     
     console.time('Total');
     for(const folder of folders) {
